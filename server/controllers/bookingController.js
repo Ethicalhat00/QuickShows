@@ -1,5 +1,6 @@
 // controllers/showController.js
 
+import { inngest } from "../inngest/index.js";
 import Booking from "../models/Booking.js";
 import Show from "../models/Show.js";
 import stripe from "stripe";
@@ -85,7 +86,18 @@ export const createBooking = async (req, res) => {
       },
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
     });
-    (booking.paymentLink = session.url), await booking.save();
+    (booking.paymentLink = session.url), 
+    await booking.save();
+
+    // run inngest func to check payemt status after 10min
+
+    await inngest.send({
+      name:"app/checkpayment",
+      data:{
+        bookingId:booking._id.toString()
+      }
+    })
+
 
     // 5. Response
     res.json({ success: true, url: session.url });

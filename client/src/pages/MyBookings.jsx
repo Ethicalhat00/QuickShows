@@ -6,6 +6,7 @@ import timeFormat from "../lib/timeFormat";
 import isoTimeFormat from "../lib/isoTimeFormat";
 import dateFormat from "../lib/dateFormat";
 import { useAppContext } from "../context/AppContext";
+import { Link } from "react-router-dom";
 
 const MyBookings = () => {
   const currency = import.meta.env.VITE_CURRENCY;
@@ -78,9 +79,9 @@ setIsLoading(false)
               </p>
 
               {!item.isPaid && (
-                <button className="bg-primary px-4 py-2 text-sm  mb-3 rounded-full font-medium cursor-pointer">
+                <Link to={item.paymentLink} className="bg-primary px-4 py-2 text-sm  mb-3 rounded-full font-medium cursor-pointer">
                   Pay Now
-                </button>
+                </Link>
               )}
             </div>
 
