@@ -92,56 +92,70 @@ const sendBookingConfirmEmail = inngest.createFunction(
   { id: "send-booking-confirmation-email" },
   { event: "app/show.booked" },
   async ({ event, step }) => {
-    const { bookingId } = event.data;
-    const booking = await Booking.findById(bookingId)
-      .populate({
-        path: "show",
-        populate: { path: "movie", model: "Movie" },
-      })
-      .populate("user");
+    try {
+      console.log("Incoming event data:", event.data);
 
-    await sendEmail({
-      to: booking.user.email,
-      subject: `🎟️ Ticket Confirmed: "${booking.show.movie.title}"`,
-      body: `
-    <div style="font-family: Arial, sans-serif; text-align: center; background: #f9f9f9; padding: 20px;">
-      
-      <!-- Banner Image -->
-      <img src="https://your-cdn-or-image-link.com/ticket-confirmed-banner.png" 
-           alt="Booking Confirmed" 
-           style="max-width: 100%; height: auto; border-radius: 8px; margin-bottom: 20px;" />
+      const { bookingId } = event.data;
+      const booking = await Booking.findById(bookingId)
+        .populate({
+          path: "show",
+          populate: { path: "movie", model: "Movie" },
+        })
+        .populate("user");
 
-      <!-- Movie Poster -->
-      <img src="${booking.show.movie.posterUrl}" 
-           alt="${booking.show.movie.title}" 
-           style="width: 200px; height: auto; border-radius: 10px; margin-bottom: 15px;" />
+      if (!booking) {
+        console.error("Booking not found for ID:", bookingId);
+        return;
+      }
 
-      <h2 style="color: #222;">${booking.show.movie.title}</h2>
+      if (!booking.user || !booking.user.email) {
+        console.error("User or user email not found for booking:", bookingId);
+        return;
+      }
 
-      <p style="font-size: 14px; color: #555;">
-        <strong>Date:</strong> ${new Date(
-          booking.show.showDateTime
-        ).toLocaleDateString("en-US", { timeZone: "Asia/Kolkata" })} <br/>
-        <strong>Time:</strong> ${new Date(
-          booking.show.showDateTime
-        ).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata" })} <br/>
-        <strong>Seats:</strong> ${booking.bookedSeats.join(", ")}
-      </p>
+      const emailBody = `
+      <div style="font-family: Arial, sans-serif; text-align: center; background: #f9f9f9; padding: 20px;">
+        <img src="https://your-cdn-or-image-link.com/ticket-confirmed-banner.png" 
+             alt="Booking Confirmed" 
+             style="max-width: 100%; height: auto; border-radius: 8px; margin-bottom: 20px;" />
 
-      <!-- Payment Info -->
-      <div style="margin: 20px 0;">
-        <span style="display: inline-block; padding: 12px 20px; background: #e50914; color: #fff; font-weight: bold; border-radius: 6px;">
-          Paid: ₹${booking.amount}
-        </span>
+        <img src="${booking.show.movie.posterUrl}" 
+             alt="${booking.show.movie.title}" 
+             style="width: 200px; height: auto; border-radius: 10px; margin-bottom: 15px;" />
+
+        <h2 style="color: #222;">${booking.show.movie.title}</h2>
+
+        <p style="font-size: 14px; color: #555;">
+          <strong>Date:</strong> ${new Date(booking.show.showDateTime).toLocaleDateString("en-US", { timeZone: "Asia/Kolkata" })} <br/>
+          <strong>Time:</strong> ${new Date(booking.show.showDateTime).toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata" })} <br/>
+          <strong>Seats:</strong> ${booking.bookedSeats.join(", ")}
+        </p>
+
+        <div style="margin: 20px 0;">
+          <span style="display: inline-block; padding: 12px 20px; background: #e50914; color: #fff; font-weight: bold; border-radius: 6px;">
+            Paid: ₹${booking.amount}
+          </span>
+        </div>
+
+        <p style="color: #666;">Enjoy your movie! 🍿</p>
+        <p style="font-size: 12px; color: #aaa;">QuickShows © ${new Date().getFullYear()}</p>
       </div>
+      `;
 
-      <p style="color: #666;">Enjoy your movie! 🍿</p>
-      <p style="font-size: 12px; color: #aaa;">QuickShows © ${new Date().getFullYear()}</p>
-    </div>
-  `,
-    });
+      const response = await sendEmail({
+        to: booking.user.email,
+        subject: `🎟️ Ticket Confirmed: "${booking.show.movie.title}"`,
+        body: emailBody,
+      });
+
+      console.log("Booking confirmation email sent:", response?.messageId);
+    } catch (err) {
+      console.error("Error sending booking confirmation email:", err);
+    }
   }
 );
+
+
 
 export const functions = [
   syncUserCreation,
