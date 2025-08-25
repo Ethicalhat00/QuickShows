@@ -3,6 +3,7 @@ import User from "../models/User.js";
 import Booking from "../models/Booking.js";
 import Show from "../models/Show.js";
 import sendEmail from "../configs/nodeMailer.js";
+import * as Brevo from '@getbrevo/brevo';
 
 // Create a client to send and receive events
 export const inngest = new Inngest({
@@ -113,6 +114,12 @@ const sendBookingConfirmEmail = inngest.createFunction(
         return;
       }
 
+      // Initialize Brevo with your API key.
+      // This is the correct way to import and use the SDK with ESM syntax.
+      const apiInstance = new Brevo.TransactionalEmailsApi();
+      const apiKey = Brevo.ApiClient.instance.authentications['api-key'];
+      apiKey.apiKey = process.env.BREVO_API_KEY; // Ensure your API key is an environment variable.
+
       const emailBody = `
       <div style="font-family: Arial, sans-serif; text-align: center; background: #f9f9f9; padding: 20px;">
         <img src="https://your-cdn-or-image-link.com/ticket-confirmed-banner.png" 
@@ -142,12 +149,14 @@ const sendBookingConfirmEmail = inngest.createFunction(
       </div>
       `;
 
-      const response = await sendEmail({
-        to: booking.user.email,
-        subject: `🎟️ Ticket Confirmed: "${booking.show.movie.title}"`,
-        body: emailBody,
-      });
+      const sendSmtpEmail = new Brevo.SendSmtpEmail();
+      sendSmtpEmail.subject = `🎟️ Ticket Confirmed: "${booking.show.movie.title}"`;
+      sendSmtpEmail.sender = { "name": "QuickShows", "email": "info@quickshows.com" }; // Use your verified sender email
+      sendSmtpEmail.to = [{ "email": booking.user.email }];
+      sendSmtpEmail.htmlContent = emailBody;
 
+      const response = await apiInstance.sendTransacEmail(sendSmtpEmail);
+      
       console.log("Booking confirmation email sent:", response?.messageId);
     } catch (err) {
       console.error("Error sending booking confirmation email:", err);
